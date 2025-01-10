@@ -357,9 +357,15 @@ class LightRAG:
             for content in unique_contents
         }
 
+        # Add Progress Bar
+        total_docs : int = len(new_docs)
+        progress_bar = tqdm_async(total=total_docs, initial=0, desc="Total files process progress")
+
         # 3. Filter out already processed documents
         _add_doc_keys = await self.doc_status.filter_keys(list(new_docs.keys()))
         new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
+        if new_docs != total_docs:# if the doc is already processed, update the progress bar
+            progress_bar.update(total_docs - len(new_docs)) 
 
         if not new_docs:
             logger.info("All documents have been processed or are duplicates")
@@ -447,7 +453,7 @@ class LightRAG:
                             }
                         )
                         await self.doc_status.upsert({doc_id: doc_status})
-
+                        progress_bar.update(1)
                     except Exception as e:
                         # Mark as failed if any step fails
                         doc_status.update(
@@ -458,6 +464,7 @@ class LightRAG:
                             }
                         )
                         await self.doc_status.upsert({doc_id: doc_status})
+                        progress_bar.update(1)
                         raise e
 
                 except Exception as e:
